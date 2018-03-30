@@ -1,0 +1,11 @@
+.App {
+	text-align: center;
+}
+
+.centerGrid {
+	height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: #f4eec0;
+}
