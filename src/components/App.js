@@ -7,30 +7,26 @@ class App extends React.Component {
 		this.state = {
 			gridData: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
 		}
-		// this.handleKeyPress = this.handleKeyPress.bind(this)
-		// this.myApp = React.createRef()
 	}
 	initGame() {
-		let gridData = this.state.gridData
-		gridData = this.addNumber(gridData)
-		gridData = this.addNumber(gridData)
+		let grid = [...this.state.gridData]
+		grid = this.addNumber(grid)
+		grid = this.addNumber(grid)
 		this.setState({
-			gridData
+			gridData: grid
 		})
 	}
-	// handleKeyPress(app) {
-	// 	console.log(app)
-	// }
-	addNumber(gridData) {
+
+	addNumber(grid) {
 		const availableSpot = []
-		gridData.map((rowData, x) =>
+		grid.map((rowData, x) =>
 			rowData.map((data, y) => {
 				if (!data) availableSpot.push({ x, y })
 			})
 		)
 		const randomSpot = availableSpot[Math.floor(Math.random() * availableSpot.length)]
-		gridData[randomSpot.x][randomSpot.y] = Math.random() < 0.2 ? 4 : 2
-		return gridData
+		grid[randomSpot.x][randomSpot.y] = Math.random() < 0.2 ? 4 : 2
+		return grid
 	}
 	slide(row) {
 		const newRow = row.filter(data => data)
@@ -54,7 +50,6 @@ class App extends React.Component {
 	slideAndCombine(row) {
 		row = this.slide(row)
 		row = this.combine(row)
-		row = this.slide(row)
 		return row
 	}
 
@@ -70,26 +65,36 @@ class App extends React.Component {
 		return isDiff
 	}
 
+	// issue ====>  flipGrid function is mutating this.state.gridData
 	flipGrid(grid) {
 		return grid.map(row => row.reverse())
 	}
 
 	componentDidMount() {
 		this.initGame()
+		let copyGrid = [...this.state.gridData]
 		window.addEventListener('keyup', e => {
 			if (e.keyCode === 37 || 38 || 39 || 40) {
-				let copyGrid = [...this.state.gridData]
 				//slide right
 				if (e.keyCode === 39) {
 					copyGrid = copyGrid.map(row => this.slideAndCombine(row))
 				}
 				//slide left
 				if (e.keyCode === 37) {
+					//issue ===> state is flipped on left arrow key pressed
 					copyGrid = this.flipGrid(copyGrid).map(row => this.slideAndCombine(row))
 					copyGrid = this.flipGrid(copyGrid)
 				}
+
+				// Line 89 issue==>>>>>> gridData in the state
+				console.table(this.state.gridData)
+
+				// diffGrid compares copyGrid with this.state.gridData
 				if (this.diffGrid(copyGrid)) {
 					copyGrid = this.addNumber(copyGrid)
+					//deepCopy of gridData
+					console.table(copyGrid)
+
 					this.setState({
 						gridData: copyGrid
 					})
@@ -99,6 +104,8 @@ class App extends React.Component {
 	}
 
 	render() {
+		// Line 103 ===>>>> gridData in the state
+		console.table(this.state.gridData)
 		return (
 			<div className="App">
 				<main className="centerGrid" id="game">
