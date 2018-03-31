@@ -1,26 +1,58 @@
 import React from 'react'
 import './App.css'
 import Grid from './Grid'
+import {HotKeys} from 'react-hotkeys';
+
+
+
+  
+
+
 class App extends React.Component {
 	constructor(props) {
 		super(props)
 		this.state = {
-			gridData: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+			gridData: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+			score:0
 		}
+		this.blankGrid = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+		this.leftOp = this.leftOp.bind(this)
+		this.rightOp = this.rightOp.bind(this)
+		this.upOp = this.upOp.bind(this)
+		this.downOp = this.downOp.bind(this)
+
+		this.map = {
+			'moveLeft': 'left',
+			'moveRight': 'right',
+			'moveUp': 'up',
+			'moveDown':'down'
+		  };
+
+		  
+		this.handlers = {
+			'moveLeft': this.leftOp,
+			'moveRight': this.rightOp,
+			'moveUp': this.upOp,
+			'moveDown': this.downOp
+			}
 	}
 	initGame() {
-		let grid = [...this.state.gridData]
+		let grid = this.blankGrid.map(row => row.slice())
 		grid = this.addNumber(grid)
 		grid = this.addNumber(grid)
 		this.setState({
-			gridData: grid
+			gridData: grid,
+			score:0
 		})
+		this.forceUpdate()
+		
+
 	}
 
 	addNumber(grid) {
 		const availableSpot = []
-		grid.map((rowData, x) =>
-			rowData.map((data, y) => {
+		grid.forEach((rowData, x) =>
+			rowData.forEach((data, y) => {
 				if (!data) availableSpot.push({ x, y })
 			})
 		)
@@ -36,14 +68,17 @@ class App extends React.Component {
 
 	combine(row) {
 		let a, b
+		let score = this.state.score;
 		for (let i = 3; i > 0; i--) {
 			a = row[i]
 			b = row[i - 1]
 			if (a === b) {
+				score +=2 * a
 				row[i] = a + b
 				row[i - 1] = 0
 			}
 		}
+		this.setState({score})
 		return row
 	}
 
@@ -57,61 +92,104 @@ class App extends React.Component {
 		let isDiff = false
 		for (let i = 0; i < grid.length; i++) {
 			for (let j = 0; j < grid.length; j++) {
-				if (grid[i][j] != this.state.gridData[i][j]) {
+				if (grid[i][j] !== this.state.gridData[i][j]) {
 					isDiff = true
 				}
 			}
 		}
-		return isDiff
+		if(isDiff){
+			grid = this.addNumber(grid)
+			this.setState({
+				gridData:grid
+			})
+		}
 	}
 
-	// issue ====>  flipGrid function is mutating this.state.gridData
 	flipGrid(grid) {
 		return grid.map(row => row.reverse())
 	}
 
+	transpose(grid){
+		const newGrid = this.blankGrid.map(row => row.slice())
+		for(let i = 0; i< grid.length; i++){
+			for(let j = 0; j < grid.length; j++){
+				newGrid[i][j] = grid[j][i]
+			}
+		}
+		return newGrid
+	}
+
+	rightOp(){
+		let copyGrid = this.state.gridData.map(row => row.slice())
+		copyGrid = copyGrid.map(row => this.slideAndCombine(row))
+		this.diffGrid(copyGrid)
+	}
+	leftOp(){
+		let copyGrid = this.state.gridData.map(row => row.slice())
+		copyGrid = this.flipGrid(copyGrid).map(row => this.slideAndCombine(row))
+		copyGrid = this.flipGrid(copyGrid)
+		this.diffGrid(copyGrid)
+	}
+	upOp(){
+		let copyGrid = this.state.gridData.map(row => row.slice())
+		copyGrid = this.transpose(copyGrid)
+		copyGrid = this.flipGrid(copyGrid)
+		copyGrid = copyGrid.map(row => this.slideAndCombine(row))
+		copyGrid = this.flipGrid(copyGrid)
+		copyGrid = this.transpose(copyGrid)
+		this.diffGrid(copyGrid)
+
+	}
+	downOp(){
+		let copyGrid = this.state.gridData.map(row => row.slice())
+		copyGrid = this.transpose(copyGrid)
+		copyGrid = copyGrid.map(row => this.slideAndCombine(row))
+		copyGrid = this.transpose(copyGrid)
+		this.diffGrid(copyGrid)	
+	}
+
+	gameOver(){
+		let over = true;
+		this.state.gridData.forEach(row => {
+			row.forEach(data => {
+				if(data === 0) over = false;
+			})
+		})
+		return over
+	}
 	componentDidMount() {
 		this.initGame()
-		let copyGrid = [...this.state.gridData]
-		window.addEventListener('keyup', e => {
-			if (e.keyCode === 37 || 38 || 39 || 40) {
-				//slide right
-				if (e.keyCode === 39) {
-					copyGrid = copyGrid.map(row => this.slideAndCombine(row))
-				}
-				//slide left
-				if (e.keyCode === 37) {
-					//issue ===> state is flipped on left arrow key pressed
-					copyGrid = this.flipGrid(copyGrid).map(row => this.slideAndCombine(row))
-					copyGrid = this.flipGrid(copyGrid)
-				}
-
-				// Line 89 issue==>>>>>> gridData in the state
-				console.table(this.state.gridData)
-
-				// diffGrid compares copyGrid with this.state.gridData
-				if (this.diffGrid(copyGrid)) {
-					copyGrid = this.addNumber(copyGrid)
-					//deepCopy of gridData
-					console.table(copyGrid)
-
-					this.setState({
-						gridData: copyGrid
-					})
-				}
-			}
-		})
 	}
 
 	render() {
-		// Line 103 ===>>>> gridData in the state
-		console.table(this.state.gridData)
+		let renderOverlay = ''
+		if(this.gameOver()){
+			renderOverlay = <div className='overlay'>
+								<div className= 'overlay-msg'>
+									<h4>Game Over</h4>
+									<button onClick={()=> this.initGame()}>Restart</button>
+								</div>
+							</div>
+		}
 		return (
-			<div className="App">
-				<main className="centerGrid" id="game">
-					<Grid gridData={this.state.gridData} />
-				</main>
-			</div>
+			<HotKeys keyMap={this.map} handlers = {this.handlers}>
+				<div className='container'>
+					<div className="centerGrid">
+						<header className="header">
+							<h4 className="title">2048 in React</h4>
+							<div className="score">
+								<span className='score-text'>Score: </span>{this.state.score}
+							</div>
+						</header>
+						<main  id="game">
+							<Grid gridData={this.state.gridData} />
+						</main>
+						{renderOverlay}
+					</div>
+	
+				</div>
+
+			</HotKeys>
 		)
 	}
 }

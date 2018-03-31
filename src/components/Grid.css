@@ -2,6 +2,5 @@
 	display: flex;
 	flex-wrap: wrap;
 	flex-direction: row;
-	box-shadow: #b7b7b7 0px 0px 8px;
 	border: solid 2px #f7f6e7;
 }
